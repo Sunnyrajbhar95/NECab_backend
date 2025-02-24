@@ -7,20 +7,34 @@ const captainSchema = mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: [true, "please enter your email address"],
+    match:[/^\S+@\S+\.\S+$/, "Please enter a valid email address"]
   },
   phoneNumber: {
     type: String,
     required: true,
+    minlength:[10,"enter 10 degit mobile number"],
+    maxlength:[10,"enter 10 degit mobile number"],
+    match:[/^[6-9]\d{9}$/, 'Please enter a valid phone number']
   },
-  vehcleType:{
+  alternatePhoneNumber: {
+    type: String,
+  },
+  vehicalType: {
+    type: String,
+    required:true
+  },
+  vehicalNumber:{
      type:String,
-     required:true
+     required:true  
   },
   gender: {
     type: String,
     required: true,
     enum: ["Male", "Female", "Other"],
+  },
+  profilePicture:{
+      type:String   
   },
   license: {
     type: mongoose.Schema.Types.ObjectId,

@@ -2,10 +2,6 @@ import mongoose from "mongoose";
 
 
 const dlSchema= new mongoose.Schema({
-      captain_id:{
-          type:mongoose.Schema.Types.ObjectId,
-          ref:'Captain'
-      },
       number:{
         type:String,
         required:true,

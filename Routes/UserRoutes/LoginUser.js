@@ -20,7 +20,7 @@ userRouter.post("/login", handleLogin);
 
 userRouter.post("/verify", handleVerifyOTP);
 
-userRouter.put("/updateUserDetails", profileUpdate);
+userRouter.put("/updateUserDetails",uploads.single("profilePicture"), profileUpdate);
 
 userRouter.get("/get-profile/:id", getProfile);
 

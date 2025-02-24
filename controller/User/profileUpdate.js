@@ -10,18 +10,53 @@ import UserLogin from "../../Model/userPanel/userLogin.js";
 export const profileUpdate = async (req, res) => {
   try {
     const { phoneNumber, name, email, gender } = req.body;
-
+   
     // Find user by phone number, create if not found
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number is required",
+      });
+    }
     const user = await User.findOneAndUpdate(
       { phoneNumber }, // Search condition
       { $set: { name, email, gender } }, // Update fields
       { new: true, upsert: true, runValidators: true } // Return updated doc, create if not found
     );
+    // const user1 = await User.findOne({ phoneNumber });
 
+    // if (user1) {
+    //   if (user1.photo) {
+    //     const filePath = path.join("public", "image", user1.photo);
+    //     console.log("File Path:", filePath);
+    //     if (fs.existsSync(filePath)) {
+    //       fs.unlinkSync(filePath);
+    //       console.log("File deleted successfully");
+    //     }
+    //   }
+    //   user1.name = name,
+    //   user1.email = email,
+    //   user1.gender = gender
+    //   user1.photo = req.file?.filename;
+
+    //   await user1.save();
+
+    // } else {
+    //   console.log("hello")
+    //   user1 = await User.create({
+    //     phoneNumber,
+    //     name,
+    //     email,
+    //     gender,
+    //     photo:req.file?.filename,
+    //   });
+    // }
+
+    // console.log(user1);
     return res.status(200).json({
       success: true,
       message: User.isNew ? "User Created" : "Profile Updated",
-      User,
+      user,
     });
   } catch (error) {
     return res
@@ -83,7 +118,7 @@ export const updateProfilepicture = async (req, res) => {
         console.log("File deleted successfully");
       }
     }
-    user.photo = req.file.filename;
+    user.photo = req.file?.filename;
     const respnse = await user.save();
     return res.status(200).json({
       respnse,
@@ -120,7 +155,7 @@ export const deleteProfile = async (req, res) => {
     }
     await UserLogin.deleteOne({ phoneNumber: user.phoneNumber });
     await User.deleteOne({ phoneNumber: user.phoneNumber });
-  
+
     return res.status(200).json({
       success: true,
       message: "Account Deleted Successfully",
@@ -132,5 +167,3 @@ export const deleteProfile = async (req, res) => {
     });
   }
 };
-
-

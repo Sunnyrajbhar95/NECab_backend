@@ -23,7 +23,7 @@ export const login = async (req, res) => {
         message: "OTP Sent Successfully",
         phoneNumber,
         otp,
-        succes: false,
+        succes: true,
       });
   } catch (err) {
     return res.status(401).json({
