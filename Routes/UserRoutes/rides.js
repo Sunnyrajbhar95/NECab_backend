@@ -14,9 +14,9 @@ export const rideRouter = express.Router();
 
 rideRouter.post("/getRide", getRides);
 
-rideRouter.post("/createRide", CreateRide);
+rideRouter.post("/createRide/:id", CreateRide);
 
-rideRouter.patch("/rideAcceptance", rideAcceptance);
+rideRouter.put("/rideAcceptance/:id", rideAcceptance);
 
 rideRouter.post("/rideOptVerification", rideOtpVerification);
 

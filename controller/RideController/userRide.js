@@ -1,6 +1,8 @@
 import { getDistance } from "./GetLocation.js";
 import Ride from "../../Model/ride/rideSchema.js";
-import { findNearbyCaptains } from "../../utilities/index.js";
+// import { findNearbyCaptains } from "../../utilities/index.js";
+import User from "../../Model/userPanel/userSchema.js";
+import Captain from "../../Model/captainPannel/captain.js";
 const baseFare = {
   auto: 10,
   car: 30,
@@ -19,7 +21,7 @@ const perMinuteRate = {
   bike: 1.5,
 };
 
-const genrarateOTP = () => {
+const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 
@@ -77,13 +79,13 @@ export const getRides = async (req, res) => {
     console.log(getDistanceAndTime);
     if (getDistanceAndTime.success == false) {
       return res
-        .status(401)
+        .status(500)
         .json({ success: false, message: "Internal Server problem" });
     }
     const FareAndTime = fareAndTime(getDistanceAndTime);
     return res.status(200).json({
       FareAndTime,
-      time:getDistanceAndTime.time,
+      time: getDistanceAndTime.time,
       pickup: getDistanceAndTime.origin,
       destination: getDistanceAndTime.destination,
       success: true,
@@ -100,7 +102,8 @@ export const getRides = async (req, res) => {
 export const CreateRide = async (req, res) => {
   try {
     console.log(req.body);
-    const { source, destination, vehicalType, user_id, captain_id } = req.body;
+    const { source, destination, vehicalType } = req.body;
+    const user_id=req.params.id
     if (
       !source ||
       !destination ||
@@ -115,19 +118,32 @@ export const CreateRide = async (req, res) => {
         message: "Missing source or destination coordinates",
       });
     }
-    const { io, activeCaptains } = req;
+    // const { io, activeCaptains } = req; websocket
+    const user = await User.findById(user_id);
+
+    //finding user on the basis of user id
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User does not exist" });
 
     const getDistanceAndTime = await getDistance(source, destination);
-    if (getDistanceAndTime.success == false) {
+    if (getDistanceAndTime.success === false) {
       return res
         .status(401)
         .json({ success: false, message: "Internal Server problem" });
     }
+
     // finding the fare and distance from source and destination
     const FareAndTime = fareAndTime(getDistanceAndTime);
+
+    if (!FareAndTime || !FareAndTime[vehicalType]) {
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to calculate fare" });
+    }
     const ride = await Ride.create({
       user_id: user_id,
-      captain_id: captain_id,
       startLocation: getDistanceAndTime.origin,
       endLocation: getDistanceAndTime.destination,
       vehicalType: vehicalType,
@@ -135,24 +151,25 @@ export const CreateRide = async (req, res) => {
     });
 
     // notification to all active captain
-    const nearbyCaptains = findNearbyCaptains(source, activeCaptains);
-    console.log(nearbyCaptains);
-    nearbyCaptains.forEach(({ socketId }) => {
-      io.to(socketId).emit("newRideRequest", {
-        rideId: ride._id,
-        source,
-        destination,
-        fare: FareAndTime[vehicalType].price,
-      });
-    });
+    // const nearbyCaptains = findNearbyCaptains(source, activeCaptains);
+    // console.log(nearbyCaptains);
+    // nearbyCaptains.forEach(({ socketId }) => {
+    //   io.to(socketId).emit("newRideRequest", {
+    //     rideId: ride._id,
+    //     source,
+    //     destination,
+    //     fare: FareAndTime[vehicalType].price,
+    //     phoneNumber: user.phoneNumber,
+    //   });
+    // });
     return res
       .status(200)
       .json({ ride, success: true, message: "Ride created successfully" });
   } catch (err) {
     console.log(err);
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
-      error: err,
+      error: err.message,
     });
   }
 };
@@ -189,96 +206,125 @@ export const rideHistory = async (req, res) => {
   }
 };
 
+
 //rideacceptance notifiaction for user is working
 export const rideAcceptance = async (req, res) => {
   try {
-    const { id, captain_id } = req.body;
-    if (!id || !captain_id) {
-      return res
-        .status(401)
-        .json({ success: false, message: "captain Id or ride id is required" });
+    const { ride_id} = req.body;
+    const captain_id=req.params.id
+    console.log(captain_id)
+
+    // Validate required fields
+    if (!ride_id || !captain_id) {
+      return res.status(400).json({ success: false, message: "Captain ID or Ride ID is required" });
     }
-    const ride = await Ride.findById(id);
+
+    // Check if the captain exists
+    const captain = await Captain.findById(captain_id);
+    console.log(captain)
+    if (!captain) {
+      return res.status(404).json({ success: false, message: "Captain not found" });
+    }
+
+    // Generate OTP
+    const generateOtp = generateOTP(); // Fixed typo
+
+    // Atomic update to prevent race condition
+    const ride = await Ride.findOneAndUpdate(
+      { _id: ride_id, status: "pending" },  // Ensure ride is still pending
+      { status: "accepted", captain_id, otp: generateOtp },
+      { new: true }  // Return updated ride
+    );
+
     if (!ride) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Ride not found" });
+      return res.status(400).json({ success: false, message: "Ride is already accepted" });
     }
 
-    if (ride.status !== "pending") {
-      return res.status(400).json({ message: "Ride is already accepted" });
-    }
-    const { io, activeUser } = req;
-    console.log(activeUser, "hello");
+    // const { io, activeUser } = req;
+    // Emit WebSocket event only if user is online
+    // if (activeUser[ride.user_id]) {
+    //   io.to(activeUser[ride.user_id]).emit("rideAccepted", {
+    //     id: ride._id,
+    //     captain_id,
+    //     phoneNumber: captain.phoneNumber,
+    //     generateOtp,
+    //     message: "Your ride has been accepted!",
+    //   });
+    // }
 
-    io.to(activeUser[ride.user_id]).emit("rideAccepted", {
-      id: ride._id,
-      captain_id: ride.captain_id,
-      message: "Your ride has been accepted!",
-    });
-    const generateOtp = genrarateOTP();
-    ride.status = "accepted";
-    ride.captain_id = captain_id;
-    ride.otp = generateOtp;
-    await ride.save();
     res.status(200).json({
       success: true,
       message: "Ride accepted",
-      generateOtp,
+      otp: generateOtp,  // Return OTP
     });
+
   } catch (err) {
-    console.log(err);
-    return res.status(401).json({
+    console.error("Error accepting ride:", err);
+    return res.status(500).json({
       success: false,
-      message: "Internal Server Problem",
+      message: "Internal Server Error",
     });
   }
 };
+
 
 // Ride completion logic
 export const rideComplete = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) {
+    const { ride_id } = req.body;
+    
+    if (!ride_id) {
       return res
-        .status(401)
-        .json({ success: false, message: "RideId is required" });
+        .status(400)
+        .json({ success: false, message: "Ride ID is required" });
     }
-    const ride = await Ride.findById(id);
+
+    // Use findOneAndUpdate to prevent race conditions
+    const ride = await Ride.findOneAndUpdate(
+      { _id: ride_id, status: "accepted" },  // Ensure only accepted rides can be completed
+      { status: "completed" }, 
+      { new: true }  // Return updated document
+    );
+
     if (!ride) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Ride not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found or already completed/canceled",
+      });
     }
-    (ride.status = "completed"), await ride.save();
+
     return res.status(200).json({
       success: true,
+      message: "Ride completed successfully",
+      ride,
     });
+
   } catch (err) {
-    console.log(err);
-    return res.status(401).json({ success: false, err });
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 // Ride otp verifiaction  logic
 export const rideOtpVerification = async (req, res) => {
   try {
-    const { id, otp } = req.body;
-    if (!id) {
-      return res.status(401).json({
+    const { ride_id, otp } = req.body;
+    if (!ride_id) {
+      return res.status(400).json({
         success: false,
         message: "Ride id is required",
       });
     }
-    const ride = await Ride.findById(id);
+    const ride = await Ride.findById(ride_id);
     if (!ride) {
-      return res.status(401).json({
+      return res.status(404).json({
         success: false,
         message: "Ride not found",
       });
     }
     if (ride.otp !== otp) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: "Invalid otp",
       });
@@ -291,7 +337,7 @@ export const rideOtpVerification = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
       message: "Internal Server Problem",
     });
@@ -301,55 +347,77 @@ export const rideOtpVerification = async (req, res) => {
 // Ride Concellation logic
 export const rideCancel = async (req, res) => {
   try {
-    const { id, user_id } = req.body;
-
+    const { ride_id, user_id } = req.body; // Extract from req.body, not req.params
     const { io, activeCaptains } = req;
-    if (!id || !user_id) {
-      return res
-        .status(401)
-        .json({ success: false, message: "RideId or UserId Required" });
+
+    // Validate required fields
+    if (!ride_id || !user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Ride ID and User ID are required.",
+      });
     }
 
-    const ride = await Ride.findById(id);
-
+    // Find ride by ID
+    const ride = await Ride.findById(ride_id);
     if (!ride) {
-      return res.status(404).json({ message: "Ride not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found.",
+      });
     }
-    if (ride.user_id.toString() !== user_id) {
-      return res
-        .status(403)
-        .json({ message: "You are not allowed to cancel this ride" });
+
+    // Check if the requesting user is the ride owner
+    if (ride.user_id?.toString() !== user_id) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to cancel this ride.",
+      });
     }
+
+    // Prevent cancellation if the ride is already completed
     if (ride.status === "completed") {
-      return res
-        .status(400)
-        .json({ message: "Ride is already completed, cannot be cancelled" });
+      return res.status(400).json({
+        success: false,
+        message: "Ride is already completed, cannot be cancelled.",
+      });
     }
+
+    // Prevent re-cancellation
     if (ride.status === "cancelled") {
-      return res.status(400).json({ message: "Ride is already cancelled" });
+      return res.status(400).json({
+        success: false,
+        message: "Ride is already cancelled.",
+      });
     }
+
+    // Mark ride as cancelled
     ride.status = "cancelled";
     await ride.save();
 
+    // Notify captain if assigned
     if (ride.captain_id && activeCaptains[ride.captain_id]) {
       const captainSocketId = activeCaptains[ride.captain_id].socketId;
       io.to(captainSocketId).emit("rideCancelled", {
-        rideId: ride.id,
+        rideId: ride._id, // Use `_id` instead of `id`
         message: "The ride has been cancelled by the user.",
       });
     }
 
-    return res
-      .status(401)
-      .json({ sucess: true, message: "Ride CancelLed Successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Ride cancelled successfully.",
+    });
+
   } catch (err) {
-    console.log(err);
-    return res.status(401).json({
+    console.error("Error in rideCancel:", err);
+    return res.status(500).json({
       success: false,
-      message: "internal server Problem",
+      message: "Internal Server Error",
     });
   }
 };
+
 
 //All rides for the admin logic
 export const getAllRide = async (req, res) => {
@@ -370,7 +438,7 @@ export const getAllRide = async (req, res) => {
 
 export const userRideHistory = async (req, res) => {
   try {
-    const userId = req.params.id;
+    const userId = req.params.id
     if (!userId)
       return res
         .status(400)

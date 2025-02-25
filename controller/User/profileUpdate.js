@@ -9,8 +9,9 @@ import UserLogin from "../../Model/userPanel/userLogin.js";
 
 export const profileUpdate = async (req, res) => {
   try {
-    const { phoneNumber, name, email, gender } = req.body;
-   
+    const { name, email, gender } = req.body;
+    const phoneNumber=req.user.phoneNumber
+     console.log(req.file)
     // Find user by phone number, create if not found
     if (!phoneNumber) {
       return res.status(400).json({
@@ -18,45 +19,45 @@ export const profileUpdate = async (req, res) => {
         message: "Mobile number is required",
       });
     }
-    const user = await User.findOneAndUpdate(
-      { phoneNumber }, // Search condition
-      { $set: { name, email, gender } }, // Update fields
-      { new: true, upsert: true, runValidators: true } // Return updated doc, create if not found
-    );
-    // const user1 = await User.findOne({ phoneNumber });
+    // const user = await User.findOneAndUpdate(
+    //   { phoneNumber }, // Search condition
+    //   { $set: { name, email, gender } }, // Update fields
+    //   { new: true, upsert: true, runValidators: true } // Return updated doc, create if not found
+    // );
+    const user1 = await User.findOne({ phoneNumber });
 
-    // if (user1) {
-    //   if (user1.photo) {
-    //     const filePath = path.join("public", "image", user1.photo);
-    //     console.log("File Path:", filePath);
-    //     if (fs.existsSync(filePath)) {
-    //       fs.unlinkSync(filePath);
-    //       console.log("File deleted successfully");
-    //     }
-    //   }
-    //   user1.name = name,
-    //   user1.email = email,
-    //   user1.gender = gender
-    //   user1.photo = req.file?.filename;
+    if (user1) {
+      if (user1.photo) {
+        const filePath = path.join("public", "image", user1.photo);
+        console.log("File Path:", filePath);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log("File deleted successfully");
+        }
+      }
+      user1.name = name,
+      user1.email = email,
+      user1.gender = gender
+      user1.photo = req.file?.filename;
 
-    //   await user1.save();
+      await user1.save();
 
-    // } else {
-    //   console.log("hello")
-    //   user1 = await User.create({
-    //     phoneNumber,
-    //     name,
-    //     email,
-    //     gender,
-    //     photo:req.file?.filename,
-    //   });
-    // }
+    } else {
+      console.log("hello")
+      user1 = await User.create({
+        phoneNumber,
+        name,
+        email,
+        gender,
+        photo:req.file?.filename,
+      });
+    }
 
-    // console.log(user1);
+    console.log(user1);
     return res.status(200).json({
       success: true,
       message: User.isNew ? "User Created" : "Profile Updated",
-      user,
+      user1,
     });
   } catch (error) {
     return res
@@ -67,13 +68,13 @@ export const profileUpdate = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
-    const userId = req.params.id;
-    if (!userId)
+      const phoneNumber=req.user.phoneNumber
+    if (!phoneNumber)
       return res.status(400).json({
         success: false,
-        message: "User id not found",
+        message: "Missing data",
       });
-    const user = await User.findById(userId);
+    const user = await User.findOne({phoneNumber});
     if (!user)
       return res.status(404).json({
         success: false,
@@ -96,15 +97,16 @@ export const getProfile = async (req, res) => {
 
 export const updateProfilepicture = async (req, res) => {
   try {
-    const userId = req.params.id;
+    // const userId = req.params.id;
+    const phoneNumber=req.user.phoneNumber
     // console.log(req.file.filename);
-    if (!userId) {
+    if (!phoneNumber) {
       return res.status(400).json({
         success: false,
         message: "User id not found",
       });
     }
-    const user = await User.findById(userId);
+    const user = await User.findOne({phoneNumber});
     if (!user) {
       return res
         .status(404)
@@ -135,7 +137,7 @@ export const updateProfilepicture = async (req, res) => {
 
 export const deleteProfile = async (req, res) => {
   try {
-    const userId = req.params.id;
+    const phoneNumber = req.user.phoneNumber;
     // console.log(req.params.id);
     if (!userId) {
       return res.status(400).json({
@@ -143,7 +145,7 @@ export const deleteProfile = async (req, res) => {
         message: "User id not found",
       });
     }
-    const user = await User.findById(userId);
+  const user = await User.findOne({phoneNumber});
 
     if (user.photo) {
       const filePath = path.join("public", "image", user.photo);

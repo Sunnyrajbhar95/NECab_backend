@@ -1,19 +1,4 @@
 import multer from "multer";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Recreate __dirname for ES modules
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
-// Ensure the Uploads folder exists
-// const uploadDir = path.join(__dirname, '../Uploads');
-// console.log(uploadDir)
-
-// if (!fs.existsSync(uploadDir)) {
-//   fs.mkdirSync(uploadDir, { recursive: true }); // Create the folder if it doesn't exist
-// }
 
 // Multer storage configuration
 const storage = multer.diskStorage({

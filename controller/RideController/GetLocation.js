@@ -9,7 +9,6 @@ export const getDistance = async (source,destination) => {
     console.log(response.data.rows[0].elements[0].duration.text)
     if (response.data.status === "OK") {
       return {
-        
         distance: response.data.rows[0].elements[0].distance.value,
         duration: response.data.rows[0].elements[0].duration.value,
         time:response.data.rows[0].elements[0].duration.text,

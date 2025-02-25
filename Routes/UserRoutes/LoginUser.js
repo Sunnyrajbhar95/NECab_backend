@@ -2,6 +2,7 @@ import express from "express";
 import {
   handleLogin,
   handleVerifyOTP,
+  logout
 } from "../../controller/User/handleLogin.js";
 import {
   profileUpdate,
@@ -20,10 +21,13 @@ userRouter.post("/login", handleLogin);
 
 userRouter.post("/verify", handleVerifyOTP);
 
-userRouter.put("/updateUserDetails",uploads.single("profilePicture"), profileUpdate);
+userRouter.put("/updateUserDetails",verifyUser,uploads.single("profilePicture"), profileUpdate);
 
-userRouter.get("/get-profile/:id", getProfile);
+userRouter.get("/get-profile",verifyUser, getProfile);
+ 
+userRouter.put("/update-profile",verifyUser,uploads.single("profilePicture"),updateProfilepicture)
 
-userRouter.put("/update-profile/:id",uploads.single("profilePicture"),updateProfilepicture)
+userRouter.delete("/delete-profile",verifyUser, deleteProfile)
 
-userRouter.delete("/delete-profile/:id", deleteProfile)
+userRouter.post('/logout',logout)
+ 

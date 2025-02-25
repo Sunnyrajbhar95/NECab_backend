@@ -29,4 +29,4 @@ export const capAuth = async (req, res, next) => {
       error: err,
     });
   }
-};
+  };

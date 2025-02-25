@@ -4,7 +4,8 @@ dotenv.config();
 import UserLogin from "../Model/userPanel/userLogin.js"
 
 export const verifyUser = async (req, res, next) => {
-  const token = req.headers.authorization;
+  const token = req.headers.authorization?.split(" ")[1];
+  console.log(token)
   if (!token) {
     return res.status(401).send("Access Denied");
   }
