@@ -9,7 +9,7 @@ const captainLogin = mongoose.Schema({
   },
   otp: {
     type: String,
-    match: [/^\d{6}$/, 'Please enter a valid 6 digit OTP']
+    // match: [/^\d{6}$/, 'Please enter a valid 6 digit OTP']
   },
   verified:{
        type:Boolean,

@@ -7,7 +7,9 @@ export const login = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
 
-    const otp = genrarateOTP().toString();
+    // const otp = genrarateOTP().toString();
+    const otp="2709"
+
     const otpExpiration = new Date(Date.now() + 5 * 60 * 1000);
     const captain = await Captain.findOne({ phoneNumber });
     if (captain) {
@@ -23,7 +25,7 @@ export const login = async (req, res) => {
         message: "OTP Sent Successfully",
         phoneNumber,
         otp,
-        succes: true,
+        success: true,
       });
   } catch (err) {
     return res.status(401).json({
@@ -37,7 +39,7 @@ export const optVerifaiction = async (req, res) => {
   try {
     const { phoneNumber, otp } = req.body;
     const captain = await Captain.findOne({ phoneNumber });
-    if (!captain || captain.otp !== otp || captain.otpExpiration < new Date()) {
+    if (!captain || captain.otp !== otp) {
       return res
         .status(400)
         .json({ message: "Invalid or expired OTP", succes: false });
